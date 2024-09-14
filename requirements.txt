@@ -5,5 +5,4 @@ ultralytics
 pathlib
 datetime
 google.generativeai
-cv2
 numpy
