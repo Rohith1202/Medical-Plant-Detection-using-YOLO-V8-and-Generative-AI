@@ -13,9 +13,9 @@ import google.generativeai as genai
 import cv2
 import numpy as np
 # Paths for user data
-user_data_file = "C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\login_data.csv"
-detection_history_file = "C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\Detection History.csv"
-feedback_file = "C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\feedback.csv"
+user_data_file = "login_data.csv"
+detection_history_file = "Detection History.csv"
+feedback_file = "feedback.csv"
 
 # Configure the API key for Gemini
 genai.configure(api_key='AIzaSyDGMkXv8Qqh9Bwf2Xs_M6j1UNTSFJC9wBw')  # Replace with your actual API key
