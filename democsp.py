@@ -225,7 +225,7 @@ if st.session_state.logged_in:
         st.markdown(page_bg_img, unsafe_allow_html=True)
 
     # Load the background image for the interface
-    with open("C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\medplant bg.jpg", "rb") as image_file:  # Change this path to your image
+    with open("medplant bg.jpg", "rb") as image_file:  # Change this path to your image
         encoded_image = base64.b64encode(image_file.read()).decode()
 
     # Set the background
@@ -279,7 +279,7 @@ if st.session_state.logged_in:
 
             # Perform detection
             st.write("Processing the image...")
-            model_path = "C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\best.pt"  # Path to your YOLO model
+            model_path = "best.pt"  # Path to your YOLO model
             model = YOLO(model_path)
             results = model.predict(image_path, save=True, save_txt=True)
 
@@ -312,7 +312,7 @@ if st.session_state.logged_in:
                     save_detection_history(user_name, user_age, selected_purpose, detected_plants)
 
                     # Load plant details from JSON
-                    with open("C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\plant_Details.json", "r") as file:
+                    with open("plant_Details.json", "r") as file:
                         plant_details = json.load(file)
 
                     for plant in detected_plant_names:
@@ -406,7 +406,7 @@ if st.session_state.logged_in:
 
             # Perform detection
             st.write("Processing the image...")
-            model_path = "C:\\Users\\HP\\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\best.pt" # Path to your YOLO model
+            model_path = "best.pt" # Path to your YOLO model
             model = YOLO(model_path)
             results = model.predict(image_path, save=True, save_txt=True)
 
@@ -439,7 +439,7 @@ if st.session_state.logged_in:
                     save_detection_history(user_name, user_age, selected_purpose, detected_plants)
 
                     # Load plant details from JSON
-                    with open("C:\\Users\\HP\Downloads\\CSP_Medical-Plant-Detection-Using-Deep-Learning\\plant_Details.json", "r") as file:
+                    with open("plant_Details.json", "r") as file:
                         plant_details = json.load(file)
 
                     for plant in detected_plant_names:
