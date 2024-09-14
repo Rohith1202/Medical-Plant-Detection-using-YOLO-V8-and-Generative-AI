@@ -133,7 +133,7 @@ if not st.session_state.logged_in:
         st.markdown(login_bg_img, unsafe_allow_html=True)
 
     # Load the background image for the login interface
-    with open("C:\Users\HP\Downloads\medplant loging bg.jpg", "rb") as image_file:  # Change this path to your image
+    with open("C:\\Users\\HP\\Downloads\\medplant loging bg.jpg", "rb") as image_file:  # Change this path to your image
         encoded_image = base64.b64encode(image_file.read()).decode()
 
     # Set the background for the login interface
