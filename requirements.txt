@@ -4,7 +4,6 @@ bcrypt
 ultralytics
 pathlib
 datetime
-re
 json
 google.generativeai
 cv2
