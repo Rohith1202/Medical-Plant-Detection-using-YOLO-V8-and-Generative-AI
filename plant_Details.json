@@ -1,0 +1,96 @@
+{
+  "plants": [
+    {
+      "Scientific Name": "Azadirachta Indica",
+      "Common Name": "Azadirachta Indica",
+      "Uses": {
+        "Medicinal Uses": "Used for its anti-inflammatory, antibacterial, and antifungal properties.",
+        "Culinary Uses": "Leaves can be used in salads and teas for their health benefits."
+      },
+      "Location": {
+        "Native Region": "Indian subcontinent",
+        "Current Distribution": "Tropical and subtropical regions worldwide"
+      },
+      "Dosage": {
+        "Recommended Dosage": "1-2 tablespoons of neem leaf juice per day.",
+        "Preparation Methods": "Infusion, topical application, or as a powder.",
+        "Diseases or Conditions Treated": "Skin disorders, diabetes, and dental problems."
+      },
+      "Precautions and Side Effects": "May cause nausea or vomiting in large doses.",
+      "Nutritional Information": "Rich in vitamins A, C, and E.",
+      "Active Compounds": "Azadirachtin, nimbidin.",
+      "Traditional Uses": "Used in Ayurveda for various treatments.",
+      "Scientific Research": "Numerous studies support its use in traditional medicine.",
+      "Cultivation and Harvesting": "Grows well in well-drained soil; harvested during the dry season."
+    },
+    {
+      "Scientific Name": "Calotropis procera",
+      "Common Name": "Calotropis",
+      "Uses": {
+        "Medicinal Uses": "Used for its analgesic and anti-inflammatory properties.",
+        "Culinary Uses": "Flowers can be used in salads and as a garnish."
+      },
+      "Location": {
+        "Native Region": "Tropical Africa and Asia",
+        "Current Distribution": "Found in tropical and subtropical regions."
+      },
+      "Dosage": {
+        "Recommended Dosage": "Consult a healthcare provider for appropriate dosage.",
+        "Preparation Methods": "Infusion, topical application.",
+        "Diseases or Conditions Treated": "Pain relief and skin infections."
+      },
+      "Precautions and Side Effects": "Toxic if ingested in large quantities; may cause skin irritation.",
+      "Nutritional Information": "Contains various bioactive compounds.",
+      "Active Compounds": "Calotropin, uscharin.",
+      "Traditional Uses": "Used in traditional medicine for various ailments.",
+      "Scientific Research": "Research highlights its potential medicinal properties.",
+      "Cultivation and Harvesting": "Grows in arid conditions; harvested during flowering season."
+    },
+    {
+      "Scientific Name": "Ficus religiosa",
+      "Common Name": "Ficus Religiosa-Raavi-",
+      "Uses": {
+        "Medicinal Uses": "Used for its anti-diabetic and anti-inflammatory properties.",
+        "Culinary Uses": "Leaves are sometimes used in salads."
+      },
+      "Location": {
+        "Native Region": "Indian subcontinent",
+        "Current Distribution": "Widely cultivated in tropical regions."
+      },
+      "Dosage": {
+        "Recommended Dosage": "1-2 leaves per day.",
+        "Preparation Methods": "Infusion, decoction.",
+        "Diseases or Conditions Treated": "Diabetes, respiratory issues."
+      },
+      "Precautions and Side Effects": "May cause allergic reactions in some individuals.",
+      "Nutritional Information": "Rich in antioxidants.",
+      "Active Compounds": "Flavonoids, tannins.",
+      "Traditional Uses": "Considered sacred in various cultures.",
+      "Scientific Research": "Studies support its health benefits.",
+      "Cultivation and Harvesting": "Grows well in moist, well-drained soil."
+    },
+    {
+      "Scientific Name": "Nerium oleander",
+      "Common Name": "Oleander",
+      "Uses": {
+        "Medicinal Uses": "Used for its cardiotonic effects.",
+        "Culinary Uses": "Not used in cooking due to toxicity."
+      },
+      "Location": {
+        "Native Region": "Mediterranean region",
+        "Current Distribution": "Widely cultivated as an ornamental plant."
+      },
+      "Dosage": {
+        "Recommended Dosage": "Not recommended for self-medication.",
+        "Preparation Methods": "Topical application under professional guidance.",
+        "Diseases or Conditions Treated": "Heart conditions, but only under professional supervision."
+      },
+      "Precautions and Side Effects": "Highly toxic if ingested; can cause serious health issues.",
+      "Nutritional Information": "Not applicable due to toxicity.",
+      "Active Compounds": "Oleandrin.",
+      "Traditional Uses": "Historically used in traditional medicine.",
+      "Scientific Research": "Research into its medicinal properties is ongoing.",
+      "Cultivation and Harvesting": "Thrives in well-drained soil; pruned for shape."
+    }
+  ]
+}
