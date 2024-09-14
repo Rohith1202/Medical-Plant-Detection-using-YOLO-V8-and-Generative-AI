@@ -1,5 +1,5 @@
 #%%writefile CSP_Medplant.py
-!pip install bcrypt
+pip install bcrypt
 import os
 import streamlit as st
 import pandas as pd
