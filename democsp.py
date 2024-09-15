@@ -13,6 +13,7 @@ import json
 import google.generativeai as genai
 import cv2
 import numpy as np
+import time
 # Paths for user data
 user_data_file = "login_data.csv"
 detection_history_file = "Detection History.csv"
@@ -225,7 +226,8 @@ if not st.session_state.logged_in:
             if st.button("Login"):
                 if validate_login(username, password):
                     st.session_state.logged_in = True
-                    st.success("Login successful!")
+                    st.session_state.show_success_message = True  # Flag to show success message
+                    st.rerun()
                 else:
                     st.error("Invalid username or password")
 
@@ -250,7 +252,12 @@ if st.session_state.logged_in:
 
     # Set the background
     set_background(encoded_image)
-
+    # Display the "Login successful!" message if the user has just logged in
+    if 'show_success_message' in st.session_state and st.session_state.show_success_message:
+        st.success("Login successful!✅")
+        time.sleep(2)  # Keep the message for 5 seconds
+        st.session_state.show_success_message = False
+        st.rerun() # Reset the flag
     # Main title for the project features
     st.title("Medical Plant Image Detection")
 
