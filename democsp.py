@@ -1,6 +1,7 @@
 #%%writefile CSP_Medplant.py
 import os
 import streamlit as st
+from streamlit_option_menu import option_menu
 import pandas as pd
 import bcrypt
 import base64
@@ -91,11 +92,21 @@ def save_detection_history(name, age, purpose, detected_plants):
 
 # Save feedback data to CSV
 def save_feedback(name, age, gender, rating, feedback):
+    rating_map = {
+        1: "1 Star - Poor",
+        2: "2 Stars - Fair",
+        3: "3 Stars - Average",
+        4: "4 Stars - Good",
+        5: "5 Stars - Excellent"
+    }
+    formatted_rating = rating_map[rating]
+    
+    
     feedback_data = pd.DataFrame({
         "Name": [name],
         "Age": [age],
         "Gender": [gender],
-        "Rating": [rating],
+        "Rating": [formatted_rating],
         "Feedback": [feedback]
     })
 
@@ -105,6 +116,9 @@ def save_feedback(name, age, gender, rating, feedback):
 
     feedback_data.to_csv(feedback_file, index=False)
 
+# Initialize session state for detection history
+if 'history_saved' not in st.session_state:
+    st.session_state.history_saved = False
 # Streamlit app title
 st.title("Medical Plant Detection Using Deep Learning🪴")
 
@@ -140,7 +154,13 @@ if not st.session_state.logged_in:
     set_login_background(encoded_image)
 
     with st.expander("Authentication", expanded=True):
-        menu = st.selectbox('Menu', options=['Login', 'Register', 'Forgot Password'])
+        menu = option_menu(
+                            menu_title=None,
+                            options=['Login', 'Register', 'Forgot Password'],
+                            icons=['box-arrow-right', 'person-plus', 'key'],
+                            orientation='horizontal'
+  
+                          )
 
         if menu == 'Register':
             st.subheader('Register')
@@ -180,18 +200,18 @@ if not st.session_state.logged_in:
                     st.success("Registration successful! You can now log in.")
 
         elif menu == 'Forgot Password':
-            st.subheader('Change Password')
+            st.subheader('Reset Password')
             username = st.text_input("Enter your Username")
             new_password = st.text_input("Enter your New Password", type='password')
             confirm_password = st.text_input("Confirm New Password", type='password')
 
-            if st.button("Change Password"):
+            if st.button("Reset Password"):
                 if username_exists(username):
                     if new_password == confirm_password:
                         if change_password(username, new_password):
-                            st.success("Your password has been changed successfully.")
+                            st.success("Your password has been reset successfully.")
                         else:
-                            st.error("Failed to change password. Please try again.")
+                            st.error("Failed to reset password. Please try again.")
                     else:
                         st.error("Passwords do not match! Please try again.")
                 else:
@@ -234,16 +254,10 @@ if st.session_state.logged_in:
     # Main title for the project features
     st.title("Medical Plant Image Detection")
 
-    # Logout button
-    if st.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.logout_message = "You have successfully logged out! Please log in again to continue your exploration of medicinal plant detection."
-        st.rerun()  # Refresh the page
     def run_webcam_detection():
         # User inputs for name, age, and purpose of detection
-        user_name = st.text_input("Enter your name:")
-        user_age = st.text_input("Enter your age:")
-
+        user_name = st.text_input("Enter Your Name:")
+        user_age = st.number_input("Enter Your Age:", min_value=1, max_value=120, step=1, format="%d")
         # Dropdown menu for detection purpose
         purpose_options = [
             "Identify Medicinal Properties",
@@ -256,121 +270,123 @@ if st.session_state.logged_in:
             "Commercial Use",
             "Others"
         ]
-        selected_purpose = st.selectbox("Choose the purpose of detection:", purpose_options)
+        selected_purpose = st.selectbox("Choose The Purpose of Detection:", purpose_options)
 
-        
-
-        camera = st.camera_input("Capture an image from your webcam")
+        camera = st.camera_input("Capture an Image from Your Webcam")
 
         if camera is not None:
             # Ensure upload folder exists
             if not os.path.exists('uploaded_images'):
                 os.makedirs('uploaded_images')
+            if user_name and user_age:
+                # Save the uploaded image
+                filename = Path(camera.name).name
+                image_path = os.path.join('uploaded_images', filename)
 
-            # Save the uploaded image
-            filename = Path(camera.name).name
-            image_path = os.path.join('uploaded_images', filename)
+                with open(image_path, "wb") as f:
+                    f.write(camera.getbuffer())
 
-            with open(image_path, "wb") as f:
-                f.write(camera.getbuffer())
+                # Perform detection
+                st.write("Processing the image...")
+                model_path = "best.pt"  # Path to your YOLO model
+                model = YOLO(model_path)
+                results = model.predict(image_path, save=True, save_txt=True)
 
-            # Display the uploaded image
-            #st.image(image_path, caption='Captureded Image', use_column_width=True)
+                # Locate the processed image saved by YOLO
+                runs_dir = Path("runs/detect")
+                latest_run = max(runs_dir.iterdir(), key=os.path.getmtime)
+                processed_image = latest_run / filename
 
-            # Perform detection
-            st.write("Processing the image...")
-            model_path = "best.pt"  # Path to your YOLO model
-            model = YOLO(model_path)
-            results = model.predict(image_path, save=True, save_txt=True)
+                detected_plant_names = []
 
-            # Locate the processed image saved by YOLO
-            runs_dir = Path("runs/detect")
-            latest_run = max(runs_dir.iterdir(), key=os.path.getmtime)
-            processed_image = latest_run / filename
+                if results:
+                    for result in results:
+                        for box in result.boxes:
+                            plant_name = result.names[int(box.cls)]
+                            if plant_name not in detected_plant_names:  # Check if the plant name is already in the list
+                                detected_plant_names.append(plant_name)
+                                break
 
-            detected_plant_names = []
+                if processed_image.exists():
+                    st.image(str(processed_image), caption='Processed Image', use_column_width=True)
 
-            if results:
-                for result in results:
-                    for box in result.boxes:
-                        plant_name = result.names[int(box.cls)]
-                        if plant_name not in detected_plant_names:  # Check if the plant name is already in the list
-                            detected_plant_names.append(plant_name)
-                            break
+                    # Display detected plant names
+                    if detected_plant_names:
+                        st.write("Detected Plants:")
+                        for plant in detected_plant_names:
+                            st.write(plant)
 
-            if processed_image.exists():
-                st.image(str(processed_image), caption='Processed Image', use_column_width=True)
+                        # Save detection history
+                        detected_plants = ', '.join(detected_plant_names)
+                        save_detection_history(user_name, user_age, selected_purpose, detected_plants)
 
-                # Display detected plant names
-                if detected_plant_names:
-                    st.write("Detected Plants:")
-                    for plant in detected_plant_names:
-                        st.write(plant)
+                        # Load plant details from JSON
+                        with open("plant_Details.json", "r") as file:
+                            plant_details = json.load(file)
 
-                    # Save detection history
-                    detected_plants = ', '.join(detected_plant_names)
-                    save_detection_history(user_name, user_age, selected_purpose, detected_plants)
+                        for plant in detected_plant_names:
+                            plant_info = next((p for p in plant_details["plants"] if p["Common Name"] == plant), None)
+                            if plant_info:
+                                st.write("Scientific Name:", plant_info["Scientific Name"])
+                                st.write("Uses:", plant_info["Uses"]["Medicinal Uses"])
+                                st.write("Location:", plant_info["Location"]["Native Region"])
+                                st.write("Dosage:", plant_info["Dosage"]["Recommended Dosage"])
+                                st.write("Active Compounds:", plant_info["Active Compounds"])
+                                st.write("---")
 
-                    # Load plant details from JSON
-                    with open("plant_Details.json", "r") as file:
-                        plant_details = json.load(file)
+                        # Automatically query the chatbot for information about the detected plants
+                        for plant in detected_plant_names:
+                            query = f"Tell me about {plant}."
+                            response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
+                            st.write(f"Chatbot Response for {plant}: {response.text}")
 
-                    for plant in detected_plant_names:
-                        plant_info = next((p for p in plant_details["plants"] if p["Common Name"] == plant), None)
-                        if plant_info:
-                            st.write("Scientific Name:", plant_info["Scientific Name"])
-                            st.write("Uses:", plant_info["Uses"]["Medicinal Uses"])
-                            st.write("Location:", plant_info["Location"]["Native Region"])
-                            st.write("Dosage:", plant_info["Dosage"]["Recommended Dosage"])
-                            st.write("Active Compounds:", plant_info["Active Compounds"])
-                            st.write("---")
+                    else:
+                        st.write("No plants detected.")
 
-                    # Automatically query the chatbot for information about the detected plants
-                    for plant in detected_plant_names:
-                        query = f"Tell me about {plant}."
-                        response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
-                        st.write(f"Chatbot Response for {plant}: {response.text}")
+                    # Provide a download link for the processed image
+                    with open(processed_image, "rb") as file:
+                        st.download_button(label="Download Processed Image", data=file, file_name=f"processed_{filename}", mime="image/png")
 
+                    # Locate the TXT file with detection data
+                    txt_file = latest_run / f"{filename.split('.')[0]}.txt"
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    # Read the existing detection data
+                    detection_data = ""
+
+                    if txt_file.exists():
+                        with open(txt_file, "r") as file:
+                            detection_data = file.read()
+
+                    # Append user information, purpose, detected plant names, and timestamp to the detection data
+                    detection_data += f"\nName: {user_name}\nAge: {user_age}\nPurpose: {selected_purpose}\nDetected Plants: {', '.join(detected_plant_names)}\nTimestamp: {timestamp}\n"
+                    detection_data += f"\n------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
+                    detection_data += f"Chatbot Response for {plant}: {response.text}\n\n"
+
+                    # Provide a download link for the updated detection data
+                    st.download_button(
+                        label="Download Detection Data",
+                        data=detection_data,
+                        file_name=f"detection_{filename.split('.')[0]}.txt",
+                        mime="text/plain"
+                    )
                 else:
-                    st.write("No plants detected.")
-
-                # Provide a download link for the processed image
-                with open(processed_image, "rb") as file:
-                    st.download_button(label="Download Processed Image", data=file, file_name=f"processed_{filename}", mime="image/png")
-
-                # Locate the TXT file with detection data
-                txt_file = latest_run / f"{filename.split('.')[0]}.txt"
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                # Read the existing detection data
-                detection_data = ""
-
-                if txt_file.exists():
-                    with open(txt_file, "r") as file:
-                        detection_data = file.read()
-
-                # Append user information, purpose, detected plant names, and timestamp to the detection data
-                detection_data += f"\nName: {user_name}\nAge: {user_age}\nPurpose: {selected_purpose}\nDetected Plants: {', '.join(detected_plant_names)}\nTimestamp: {timestamp}\n"
-                detection_data += f"\n------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
-                detection_data += f"Chatbot Response for {plant}: {response.text}\n\n"
-
-                # Provide a download link for the updated detection data
-                st.download_button(
-                    label="Download Detection Data",
-                    data=detection_data,
-                    file_name=f"detection_{filename.split('.')[0]}.txt",
-                    mime="text/plain"
-                )
+                    st.write("No processed image available.")
             else:
-                st.write("No processed image available.")
+                st.error("Please fill in all fields before Capturing an image!")
 
-
-    with st.expander("Select Your Below Choice", expanded=True):
-        menu = st.selectbox('Menu', options=['Upload Image', 'Detect from webcam', 'Ask AI Chatbot', 'Detection History', 'Feedback', 'About Us'])
-    if menu == 'Upload Image':
+    with st.sidebar:
+        selected=option_menu(
+            menu_title='Main Menu',
+            options=['Upload Image', 'Detect from webcam', 'Ask AI Chatbot', 'Detection History', 'Feedback', 'About Us', 'Logout'],
+            icons=['upload', 'webcam-fill', 'robot', 'hourglass-bottom', 'star-fill', 'file-earmark-person', 'box-arrow-left'],
+            menu_icon='cast',
+            default_index=0
+        )
+    if selected == 'Upload Image':
         # User inputs for name, age, and purpose of detection
-        user_name = st.text_input("Enter your name:")
-        user_age = st.text_input("Enter your age:")
+        user_name = st.text_input("Enter Your Name:")
+        user_age = st.number_input("Enter Your Age:", min_value=1, max_value=120, step=1, format="%d")
 
         # Dropdown menu for detection purpose
         purpose_options = [
@@ -384,8 +400,9 @@ if st.session_state.logged_in:
             "Commercial Use",
             "Others"
         ]
-        selected_purpose = st.selectbox("Choose the purpose of detection:", purpose_options)
+        selected_purpose = st.selectbox("Choose the Purpose of Detection:", purpose_options)
 
+        
         # File uploader
         uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg", "gif"])
 
@@ -393,111 +410,114 @@ if st.session_state.logged_in:
             # Ensure upload folder exists
             if not os.path.exists('uploaded_images'):
                 os.makedirs('uploaded_images')
+            if user_name and user_age and selected_purpose:
+                
+                # Save the uploaded image
+                filename = Path(uploaded_file.name).name
+                image_path = os.path.join('uploaded_images', filename)
 
-            # Save the uploaded image
-            filename = Path(uploaded_file.name).name
-            image_path = os.path.join('uploaded_images', filename)
+                with open(image_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
 
-            with open(image_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+                # Display the uploaded image
+                st.image(image_path, caption='Uploaded Image', use_column_width=True)
 
-            # Display the uploaded image
-            st.image(image_path, caption='Uploaded Image', use_column_width=True)
+                # Perform detection
+                st.write("Processing the image...")
+                model_path = "best.pt" # Path to your YOLO model
+                model = YOLO(model_path)
+                results = model.predict(image_path, save=True, save_txt=True)
 
-            # Perform detection
-            st.write("Processing the image...")
-            model_path = "best.pt" # Path to your YOLO model
-            model = YOLO(model_path)
-            results = model.predict(image_path, save=True, save_txt=True)
+                # Locate the processed image saved by YOLO
+                runs_dir = Path("runs/detect")
+                latest_run = max(runs_dir.iterdir(), key=os.path.getmtime)
+                processed_image = latest_run / filename
 
-            # Locate the processed image saved by YOLO
-            runs_dir = Path("runs/detect")
-            latest_run = max(runs_dir.iterdir(), key=os.path.getmtime)
-            processed_image = latest_run / filename
+                detected_plant_names = []
 
-            detected_plant_names = []
+                if results:
+                    for result in results:
+                        for box in result.boxes:
+                            plant_name = result.names[int(box.cls)]
+                            if plant_name not in detected_plant_names:  # Check if the plant name is already in the list
+                                detected_plant_names.append(plant_name)
+                                break
 
-            if results:
-                for result in results:
-                    for box in result.boxes:
-                        plant_name = result.names[int(box.cls)]
-                        if plant_name not in detected_plant_names:  # Check if the plant name is already in the list
-                            detected_plant_names.append(plant_name)
-                            break
+                if processed_image.exists():
+                    st.image(str(processed_image), caption='Processed Image', use_column_width=True)
 
-            if processed_image.exists():
-                st.image(str(processed_image), caption='Processed Image', use_column_width=True)
+                    # Display detected plant names
+                    if detected_plant_names:
+                        st.write("Detected Plants:")
+                        for plant in detected_plant_names:
+                            st.write(plant)
 
-                # Display detected plant names
-                if detected_plant_names:
-                    st.write("Detected Plants:")
-                    for plant in detected_plant_names:
-                        st.write(plant)
+                        # Save detection history
+                        detected_plants = ', '.join(detected_plant_names)
+                        save_detection_history(user_name, user_age, selected_purpose, detected_plants)
 
-                    # Save detection history
-                    detected_plants = ', '.join(detected_plant_names)
-                    save_detection_history(user_name, user_age, selected_purpose, detected_plants)
+                        # Load plant details from JSON
+                        with open("plant_Details.json", "r") as file:
+                            plant_details = json.load(file)
 
-                    # Load plant details from JSON
-                    with open("plant_Details.json", "r") as file:
-                        plant_details = json.load(file)
+                        for plant in detected_plant_names:
+                            plant_info = next((p for p in plant_details["plants"] if p["Common Name"] == plant), None)
+                            if plant_info:
+                                st.write("*Scientific Name:*", plant_info["Scientific Name"])
+                                st.write("*Uses:*", plant_info["Uses"]["Medicinal Uses"])
+                                st.write("*Location:*", plant_info["Location"]["Native Region"])
+                                st.write("*Dosage:*", plant_info["Dosage"]["Recommended Dosage"])
+                                st.write("*Active Compounds:*", plant_info["Active Compounds"])
+                                st.write("---")
 
-                    for plant in detected_plant_names:
-                        plant_info = next((p for p in plant_details["plants"] if p["Common Name"] == plant), None)
-                        if plant_info:
-                            st.write("*Scientific Name:*", plant_info["Scientific Name"])
-                            st.write("*Uses:*", plant_info["Uses"]["Medicinal Uses"])
-                            st.write("*Location:*", plant_info["Location"]["Native Region"])
-                            st.write("*Dosage:*", plant_info["Dosage"]["Recommended Dosage"])
-                            st.write("*Active Compounds:*", plant_info["Active Compounds"])
-                            st.write("---")
+                        # Automatically query the chatbot for information about the detected plants
+                        for plant in detected_plant_names:
+                            query = f"Tell me about {plant}."
+                            response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
+                            st.write(f"*Chatbot Response for {plant}:* {response.text}")
 
-                    # Automatically query the chatbot for information about the detected plants
-                    for plant in detected_plant_names:
-                        query = f"Tell me about {plant}."
-                        response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
-                        st.write(f"*Chatbot Response for {plant}:* {response.text}")
+                    else:
+                        st.write("No plants detected.")
 
+                    # Provide a download link for the processed image
+                    with open(processed_image, "rb") as file:
+                        st.download_button(label="Download Processed Image", data=file, file_name=f"processed_{filename}", mime="image/png")
+
+                    # Locate the TXT file with detection data
+                    txt_file = latest_run / f"{filename.split('.')[0]}.txt"
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    # Read the existing detection data
+                    detection_data = ""
+
+                    if txt_file.exists():
+                        with open(txt_file, "r") as file:
+                            detection_data = file.read()
+
+                    # Append user information, purpose, detected plant names, and timestamp to the detection data
+                    detection_data += f"\nName: {user_name}\nAge: {user_age}\nPurpose: {selected_purpose}\nDetected Plants: {', '.join(detected_plant_names)}\nTimestamp: {timestamp}\n"
+                    detection_data += f"\n------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
+                    detection_data += f"Chatbot Response for {plant}: {response.text}\n\n"
+
+                    # Provide a download link for the updated detection data
+                    st.download_button(
+                        label="Download Detection Data",
+                        data=detection_data,
+                        file_name=f"detection_{filename.split('.')[0]}.txt",
+                        mime="text/plain"
+                    )
                 else:
-                    st.write("No plants detected.")
-
-                # Provide a download link for the processed image
-                with open(processed_image, "rb") as file:
-                    st.download_button(label="Download Processed Image", data=file, file_name=f"processed_{filename}", mime="image/png")
-
-                # Locate the TXT file with detection data
-                txt_file = latest_run / f"{filename.split('.')[0]}.txt"
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                # Read the existing detection data
-                detection_data = ""
-
-                if txt_file.exists():
-                    with open(txt_file, "r") as file:
-                        detection_data = file.read()
-
-                # Append user information, purpose, detected plant names, and timestamp to the detection data
-                detection_data += f"\nName: {user_name}\nAge: {user_age}\nPurpose: {selected_purpose}\nDetected Plants: {', '.join(detected_plant_names)}\nTimestamp: {timestamp}\n"
-                detection_data += f"\n------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
-                detection_data += f"Chatbot Response for {plant}: {response.text}\n\n"
-
-                # Provide a download link for the updated detection data
-                st.download_button(
-                    label="Download Detection Data",
-                    data=detection_data,
-                    file_name=f"detection_{filename.split('.')[0]}.txt",
-                    mime="text/plain"
-                )
+                    st.write("No processed image available.")
             else:
-                st.write("No processed image available.")
-
-    elif menu == 'Detect from webcam':
+                st.error("Please fill in all fields before uploading your image!")
+    if selected == 'Detect from webcam':
         st.write("Opening webcam for plant detection...")
         run_webcam_detection()
 
-    elif menu == 'Ask AI Chatbot':
+    if selected == 'Ask AI Chatbot':
         st.subheader("Ask the Chatbot about Plants")
-        user_query = st.text_input("What do you want to know about plants?", "")
+        user_query = st.text_input("What do you want to know about plants?",
+                                 placeholder="Ask your Medical Plant related question here...")
         
         if st.button("Submit"):
             if user_query:
@@ -505,50 +525,88 @@ if st.session_state.logged_in:
                 response = genai.GenerativeModel('gemini-1.5-flash').generate_content(user_query)
                 st.write("Chatbot:", response.text)
             else:
-                st.write("Please enter a question.")
-    elif menu == 'Detection History':
+                st.warning("⚠️ Please ask your question.")  # Show a warning if input is empty
+    if selected == 'Detection History':
             st.subheader("Detection History")
             detection_history = load_detection_history()
             if not detection_history.empty:
                 st.table(detection_history)
             else:
                 st.write("No detection history available.")
-    elif menu == 'Feedback':
+    if selected == 'Feedback':
             st.subheader("Give Us Your Feedback")
 
-            user_name = st.text_input("Enter your name:")
-            user_age = st.text_input("Enter your age:")
+            user_name = st.text_input("Enter Your Name:")
+            user_age = st.number_input("Enter Your Age:", min_value=1, max_value=120, step=1, format="%d")
 
-            gender_options = ["Male", "Female", "Other"]
-            selected_gender = st.selectbox("Select your gender:", gender_options)
+            gender_options = ["Male", "Female"]
+            selected_gender = st.selectbox("Select Your Gender:", gender_options)
 
-            feedback_rating = st.radio("Rate your experience (1-5 stars):", range(1, 6))
+            #feedback_rating = st.radio("Rate your experience (1-5 stars):", range(1, 6))
+            # Rating selection
+            feedback_rating = st.radio(
+                "Rate Your Experience (1-5 stars):",
+                options=[1, 2, 3, 4, 5],
+                format_func=lambda x: {
+                    1: "1 Star - Poor",
+                    2: "2 Stars - Fair",
+                    3: "3 Stars - Average",
+                    4: "4 Stars - Good",
+                    5: "5 Stars - Excellent"
+                }[x]
+            )
 
-            feedback_text = st.text_area("Share your suggestions:")
+            feedback_text = st.text_area("Share Your Suggestions: (if any)")
 
             if st.button("Submit Feedback"):
-                save_feedback(user_name, user_age, selected_gender, feedback_rating, feedback_text)
-                st.success("Thank you for your feedback!")
-    elif menu == 'About Us':
-        st.write("## About Us")
-        st.write("We are a dedicated team committed to providing the best service 😀.")
-        
-        st.subheader("Our Mission:")
-        st.write("1. Develop an accurate and reliable system for identifying medicinal plants using machine learning and computer vision techniques")
-        st.write("2. Create a comprehensive database of Indian medicinal plants with detailed information on their properties, uses, and conservation status")
-        st.write("3. Build a user-friendly web application to make medicinal plant identification accessible to botanists, researchers, and the general public")
-        
-        st.subheader("The Team:")
-        st.write("Dr. [Name], Lead Researcher - Specializes in machine learning and image classification algorithms")
-        st.write("[Name], Botanist - Provides domain expertise on medicinal plants and their identification")
-        st.write("[Name], Web Developer - Responsible for designing and implementing the project's web application")
-        st.write("[Name], Data Scientist - Analyzes plant data and develops insights to improve the identification system")
-        
-        st.subheader("Project Mentor:")
-        st.write("ABC")
-        
-        st.subheader("Project Evaluator:")
-        st.write("XYZ")
-        
-    else:
-        st.write("Invalid selection.")
+                if user_name and user_age and selected_gender:
+                    
+                    save_feedback(user_name, user_age, selected_gender, feedback_rating, feedback_text)
+                    st.success("Thank you for your feedback!")
+                else:
+                    st.error("Please fill in all fields before submitting.")
+    if selected == 'About Us':
+                # Add Font Awesome CDN link to your Streamlit app
+        st.markdown(
+            """
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown("## <i class='fas fa-info-circle'></i> About Us", unsafe_allow_html=True)
+        st.write("We are a dedicated team committed to providing the best service.")
+
+        # Mission Section
+        st.markdown("<h3><i class='fas fa-bullseye'></i> Our Mission:</h3>", unsafe_allow_html=True)
+        st.markdown("""
+        1. <i class='fas fa-seedling'></i> **Develop an accurate and reliable system** for identifying medicinal plants using machine learning and computer vision techniques.
+        2. <i class='fas fa-book'></i> **Create a comprehensive database** of Indian medicinal plants with detailed information on their properties, uses, and conservation status.
+        3. <i class='fas fa-laptop-code'></i> **Build a user-friendly web application** to make medicinal plant identification accessible to botanists, researchers, and the general public.
+        """, unsafe_allow_html=True)
+
+        # Team Section
+        st.markdown("<h3><i class='fas fa-users'></i> The Team:</h3>", unsafe_allow_html=True)
+        st.markdown("""
+        - <i class='fas fa-user'></i> **Dr. [Name], Lead Researcher** - Specializes in machine learning and image classification algorithms.
+        - <i class='fas fa-user'></i> **[Name], Botanist** - Provides domain expertise on medicinal plants and their identification.
+        - <i class='fas fa-user'></i> **[Name], Web Developer** - Responsible for designing and implementing the project's web application.
+        - <i class='fas fa-user'></i> **[Name], Data Scientist** - Analyzes plant data and develops insights to improve the identification system.
+        """, unsafe_allow_html=True)
+
+        # Project Mentor
+        st.markdown("<h3><i class='fas fa-chalkboard-teacher'></i> Project Mentor:</h3>", unsafe_allow_html=True)
+        st.write("**ABC**")
+
+        # Project Evaluator
+        st.markdown("<h3><i class='fas fa-pen'></i> Project Evaluator:</h3>", unsafe_allow_html=True)
+        st.write("**XYZ**")
+
+        # Adding some separation
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("<h3><i class='fas fa-star'></i> We are committed to using science and technology to benefit the community. This project is a part of our community service efforts, aimed at improving medicinal plant identification and making this valuable information accessible to all !!</h3>", unsafe_allow_html=True)
+
+    # Logout button
+    if selected == 'Logout':
+        st.session_state.logged_in = False
+        st.session_state.logout_message = "You have successfully logged out! Please log in again to continue your exploration of medicinal plant detection."
+        st.rerun()  # Refresh the page
