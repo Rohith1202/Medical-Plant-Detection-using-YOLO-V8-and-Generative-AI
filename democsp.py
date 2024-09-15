@@ -517,7 +517,7 @@ if st.session_state.logged_in:
     if selected == 'Ask AI Chatbot':
         st.subheader("Ask the Chatbot about Plants")
         user_query = st.text_input("What do you want to know about plants?",
-                                 placeholder="Ask your Medical Plants related question here...")
+                                 placeholder="Ask your Medical Plants related questions here...")
         
         if st.button("Submit"):
             if user_query:
