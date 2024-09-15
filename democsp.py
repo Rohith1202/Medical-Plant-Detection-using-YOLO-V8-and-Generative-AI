@@ -255,7 +255,7 @@ if st.session_state.logged_in:
     # Display the "Login successful!" message if the user has just logged in
     if 'show_success_message' in st.session_state and st.session_state.show_success_message:
         st.success("Login successful!✅")
-        time.sleep(2)  # Keep the message for 5 seconds
+        time.sleep(3)  # Keep the message for 5 seconds
         st.session_state.show_success_message = False
         st.rerun() # Reset the flag
     # Main title for the project features
