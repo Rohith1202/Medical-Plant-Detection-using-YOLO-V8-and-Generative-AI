@@ -23,6 +23,7 @@ feedback_file = "feedback.csv"
 headers = {
     "authorization": st.secrets["api_key"],
     "content-type": "application/json"
+            }
 api_key = st.secrets["api_key"]
 
 # Configure the API key for Gemini
