@@ -1,4 +1,5 @@
 #%%writefile CSP_Medplant.py
+import cv2
 import os
 import streamlit as st
 from streamlit_option_menu import option_menu
@@ -11,7 +12,6 @@ from datetime import datetime
 import re
 import json
 import google.generativeai as genai
-import cv2
 import numpy as np
 import time
 from fpdf import FPDF
