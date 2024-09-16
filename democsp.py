@@ -11,8 +11,9 @@ from datetime import datetime
 import re
 import json
 import google.generativeai as genai
-import numpy as np
 import cv2
+from PIL import Image
+import numpy as np
 import time
 from fpdf import FPDF
 # Paths for user data
@@ -417,11 +418,21 @@ if st.session_state.logged_in:
                         pdf.ln(10)
                         pdf.set_font('Arial', 'B', 12)
                         pdf.cell(0, 10, 'Processed Image', ln=True, align='L')
+                        
                         # Add image
                         pdf.ln(10)
                         if processed_image.exists():
-                            pdf.image(str(processed_image), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
-                        
+                             # Open the image using PIL
+                             with Image.open(str(processed_image)) as img:
+                                  # Resize the image to 313x180 pixels
+                                  img = img.resize((313, 180), Image.Resampling.LANCZOS)
+
+                                  # Save the resized image temporarily
+                                  resized_image_path = "resized_image.jpg"
+                                  img.save(resized_image_path)
+                                  pdf.image(str(resized_image_path), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
+                             os.remove(resized_image_path)
+
                         pdf.ln(100)
                         # Title for the processed image
                         pdf.ln(10)
@@ -661,8 +672,16 @@ if st.session_state.logged_in:
                         # Add image
                         pdf.ln(10)
                         if processed_image.exists():
-                            pdf.image(str(processed_image), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
-                        
+                             # Open the image using PIL
+                             with Image.open(str(processed_image)) as img:
+                                  # Resize the image to 313x180 pixels
+                                  img = img.resize((313, 180), Image.Resampling.LANCZOS)
+
+                                  # Save the resized image temporarily
+                                  resized_image_path = "resized_image.jpg"
+                                  img.save(resized_image_path)
+                                  pdf.image(str(resized_image_path), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
+                             os.remove(resized_image_path)
                         pdf.ln(100)
                         # Title for the processed image
                         pdf.ln(10)
