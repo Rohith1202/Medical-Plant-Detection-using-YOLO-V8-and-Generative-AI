@@ -7,5 +7,4 @@ pathlib
 datetime
 google.generativeai
 numpy
-opencv-python-headless
 fpdf
