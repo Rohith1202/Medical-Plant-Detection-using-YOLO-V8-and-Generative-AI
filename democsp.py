@@ -13,6 +13,7 @@ import re
 import json
 import google.generativeai as genai
 import numpy as np
+import cv2
 import time
 from fpdf import FPDF
 # Paths for user data
