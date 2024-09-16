@@ -27,7 +27,7 @@ headers = {
 #api_key = st.secrets["api_key"]
 
 # Configure the API key for Gemini
-genai.configure(api_key='Your API Key')  # Replace with your actual API key
+genai.configure(api_key='')  # Replace with your actual API key
 
 # Ensure necessary files exist
 def ensure_user_data():
