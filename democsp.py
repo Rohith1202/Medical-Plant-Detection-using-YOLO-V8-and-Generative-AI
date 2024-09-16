@@ -21,7 +21,7 @@ detection_history_file = "Detection History.csv"
 feedback_file = "feedback.csv"
 
 # Configure the API key for Gemini
-genai.configure(api_key='AIzaSyDGMkXv8Qqh9Bwf2Xs_M6j1UNTSFJC9wBw')  # Replace with your actual API key
+genai.configure(api_key='Your API Key')  # Replace with your actual API key
 
 # Ensure necessary files exist
 def ensure_user_data():
