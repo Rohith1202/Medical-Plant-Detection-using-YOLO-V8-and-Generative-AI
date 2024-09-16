@@ -21,7 +21,7 @@ detection_history_file = "Detection History.csv"
 feedback_file = "feedback.csv"
 
 headers = {
-    "authorization": st.secrets["auth_token"],
+    "authorization": st.secrets["api_key"],
     "content-type": "application/json"
             }
 #api_key = st.secrets["api_key"]
