@@ -20,6 +20,11 @@ user_data_file = "login_data.csv"
 detection_history_file = "Detection History.csv"
 feedback_file = "feedback.csv"
 
+headers = {
+    "authorization": st.secrets["api_key"],
+    "content-type": "application/json"
+api_key = st.secrets["api_key"]
+
 # Configure the API key for Gemini
 genai.configure(api_key='Your API Key')  # Replace with your actual API key
 
