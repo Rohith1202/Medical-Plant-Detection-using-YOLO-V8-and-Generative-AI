@@ -809,19 +809,19 @@ if st.session_state.logged_in:
         # Team Section
         st.markdown("<h3><i class='fas fa-users'></i> The Team:</h3>", unsafe_allow_html=True)
         st.markdown("""
-        - <i class='fas fa-user'></i> **Dr. [Name], Lead Researcher** - Specializes in machine learning and image classification algorithms.
-        - <i class='fas fa-user'></i> **[Name], Botanist** - Provides domain expertise on medicinal plants and their identification.
-        - <i class='fas fa-user'></i> **[Name], Web Developer** - Responsible for designing and implementing the project's web application.
-        - <i class='fas fa-user'></i> **[Name], Data Scientist** - Analyzes plant data and develops insights to improve the identification system.
+        - <i class='fas fa-user'></i> **BOPPANA ROHITH (99220041454), Kalasalingam Academy of Research and Education, CSE -- Team Lead and Developer** - Specializes in Deep learning and Artificial intelligence algorithms.
+        - <i class='fas fa-user'></i> **ANIMMA SRINIVASINE P (99220041437), Kalasalingam Academy of Research and Education, CSE -- Researcher** - Provides domain expertise on medicinal plants and their identification.
+        - <i class='fas fa-user'></i> **BACHULA YASWANTH BABU (99220041445), Kalasalingam Academy of Research and Education, CSE -- Web Developer** - Responsible for designing and implementing the project's web application.
+        - <i class='fas fa-user'></i> **ANISETTY.SAI PRAJWIN (99220041438), Kalasalingam Academy of Research and Education, CSE -- Data Scientist** - Analyzes plant data and develops insights to improve the identification system.
         """, unsafe_allow_html=True)
 
         # Project Mentor
         st.markdown("<h3><i class='fas fa-chalkboard-teacher'></i> Project Mentor:</h3>", unsafe_allow_html=True)
-        st.write("**ABC**")
+        st.write("**Dr. J. Jane Rubel Angelina, Kalasalingam Academy of Research and Education, CSE**")
 
-        # Project Evaluator
-        st.markdown("<h3><i class='fas fa-pen'></i> Project Evaluator:</h3>", unsafe_allow_html=True)
-        st.write("**XYZ**")
+        # Project Reviwer
+        st.markdown("<h3><i class='fas fa-pen'></i> Project Reviwer:</h3>", unsafe_allow_html=True)
+        st.write("**Dr.S.shargunam, Kalasalingam Academy of Research and Education, CSE**")
 
         # Adding some separation
         st.markdown("<hr>", unsafe_allow_html=True)
