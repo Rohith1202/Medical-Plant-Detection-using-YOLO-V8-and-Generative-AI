@@ -128,6 +128,8 @@ st.title("Medical Plant Detection Using Deep Learning🪴")
 # Initialize session state for login
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+if 'username' not in st.session_state:
+    st.session_state.username = ""  # Initialize username as an empty string
 
 # Display logout message if logged out
 if 'logout_message' in st.session_state:
@@ -136,16 +138,7 @@ if 'logout_message' in st.session_state:
 
 # Display login interface only if not logged in
 if not st.session_state.logged_in:
-    def display_csv_contents(file_path):
-        if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
-            st.write(df)
-        else:
-            st.write("File not found.")
-
-# Display CSV data in your Streamlit app
-    st.title("View CSV Data")
-    display_csv_contents("login_data.csv")
+    #st.markdown(f"## Welcome, {st.session_state.username}!", unsafe_allow_html=True)
     # Set the background image for the login interface
     def set_login_background(image_file):
         login_bg_img = f'''
@@ -239,6 +232,7 @@ if not st.session_state.logged_in:
                 if validate_login(username, password):
                     st.session_state.logged_in = True
                     st.session_state.show_success_message = True  # Flag to show success message
+                    st.session_state.username = username  # Store the username in session state
                     st.rerun()
                 else:
                     st.error("Invalid username or password")
@@ -246,6 +240,7 @@ if not st.session_state.logged_in:
 # Main project interface
 if st.session_state.logged_in:
     # Set the background image for the Streamlit interface
+    st.markdown(f"## Welcome, {st.session_state.username}!", unsafe_allow_html=True)
     def set_background(image_file):
         page_bg_img = f'''
         <style>
