@@ -144,8 +144,8 @@ if not st.session_state.logged_in:
         st.write("File not found.")
 
 # Display CSV data in your Streamlit app
-st.title("View CSV Data")
-display_csv_contents("login_data.csv")
+    st.title("View CSV Data")
+    display_csv_contents("login_data.csv")
     # Set the background image for the login interface
     def set_login_background(image_file):
         login_bg_img = f'''
