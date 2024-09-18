@@ -137,11 +137,11 @@ if 'logout_message' in st.session_state:
 # Display login interface only if not logged in
 if not st.session_state.logged_in:
     def display_csv_contents(file_path):
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        st.write(df)
-    else:
-        st.write("File not found.")
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            st.write(df)
+        else:
+            st.write("File not found.")
 
 # Display CSV data in your Streamlit app
     st.title("View CSV Data")
