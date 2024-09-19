@@ -241,14 +241,6 @@ if not st.session_state.logged_in:
 if st.session_state.logged_in:
     # Set the background image for the Streamlit interface
     st.markdown(f"## Welcome, {st.session_state.username}!", unsafe_allow_html=True)
-    #import streamlit as st
-
-    @st.cache_data
-    def get_data():
-        return {"cached_data": [1, 2, 3, 4, 5]}
-
-    st.write("Cached Data:")
-    st.write(get_data())
 
     def set_background(image_file):
         page_bg_img = f'''
