@@ -247,6 +247,8 @@ if not st.session_state.logged_in:
 
 # Main project interface
 if st.session_state.logged_in:
+    st.cache_data.clear()
+    st.cache_resource.clear()
     st.markdown(f"## Welcome, {st.session_state.username}!", unsafe_allow_html=True)
 
     username = st.session_state.username
