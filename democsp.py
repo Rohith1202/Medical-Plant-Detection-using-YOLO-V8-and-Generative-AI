@@ -62,6 +62,8 @@ def validate_login(username, password):
         return bcrypt.checkpw(password.encode('utf-8'), stored_hashed_password.encode('utf-8'))
     return False
 
+
+
 # Change password functionality
 def change_password(username, new_password):
     df = load_user_data()
@@ -71,7 +73,9 @@ def change_password(username, new_password):
         df.to_csv(user_data_file, index=False)
         return True
     return False
-
+# Initialize session state for detection history
+if 'history_saved' not in st.session_state:
+    st.session_state.history_saved = False
 # Load detection history
 def load_detection_history(username):
     if os.path.exists(detection_history_file):
@@ -129,8 +133,8 @@ def save_feedback(name, age, gender, rating, feedback):
     feedback_data.to_csv(feedback_file, index=False)
 
 # Initialize session state for detection history
-if 'history_saved' not in st.session_state:
-    st.session_state.history_saved = False
+#if 'history_saved' not in st.session_state:
+    #st.session_state.history_saved = False
 # Streamlit app title
 st.title("Medical Plant Detection Using Deep Learning🪴")
 
@@ -147,6 +151,7 @@ if 'logout_message' in st.session_state:
     
 # Display login interface only if not logged in
 if not st.session_state.logged_in:
+  
     # Set the background image for the login interface
     def set_login_background(image_file):
         login_bg_img = f'''
@@ -247,8 +252,7 @@ if not st.session_state.logged_in:
 
 # Main project interface
 if st.session_state.logged_in:
-    st.cache_data.clear()
-    st.cache_resource.clear()
+  
     st.markdown(f"## Welcome, {st.session_state.username}!", unsafe_allow_html=True)
 
     username = st.session_state.username
@@ -304,7 +308,85 @@ if st.session_state.logged_in:
         
         return pdf.output(dest='S').encode('latin1')  # Return PDF as a binary string
 
+    # Function to create a PDF with tabular formatting
+    def create_detection_pdf():
+        pdf = FPDF()
+        pdf.add_page()
+
+        # Set fonts and colors
+        pdf.set_font('Arial', 'B', 16)
+        pdf.set_fill_color(255, 255, 255)  # Background color (white)
         
+        # Table title
+        title = 'Medical Plant Detection Report'
+        pdf.cell(0, 10, title, ln=True, align='C')
+        pdf.set_font('Arial', '', 12)
+
+        # Move down slightly to avoid overlap with the underline
+        pdf.ln(10)
+
+        # Define a function to add table rows
+        def add_table_row(label, value):
+            pdf.cell(90, 10, label, border=1, align='L')
+            pdf.cell(0, 10, value, border=1, ln=True, align='L')
+        # Add data rows
+        add_table_row("Name", user_name)
+        add_table_row("Age", str(user_age))
+        add_table_row("Purpose", selected_purpose)
+        add_table_row("Detected Plants", ', '.join(detected_plant_names))
+        add_table_row("Timestamp", timestamp)
+
+        # Add separator line
+        pdf.ln(10)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 10, '-' * 140, ln=True)
+
+        # Title for the processed image
+        pdf.ln(10)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 10, 'Processed Image', ln=True, align='L')
+        # Add image
+        pdf.ln(10)
+        if processed_image.exists():
+                # Open the image using PIL
+                with Image.open(str(processed_image)) as img:
+                    # Resize the image to 313x180 pixels
+                    img = img.resize((313, 180), Image.Resampling.LANCZOS)
+
+                    # Save the resized image temporarily
+                    resized_image_path = "resized_image.jpg"
+                    img.save(resized_image_path)
+                    pdf.image(str(resized_image_path), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
+                os.remove(resized_image_path)
+        pdf.ln(100)
+        # Title for the processed image
+        pdf.ln(10)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 10, 'AI Chatbot Response', ln=True, align='L')
+
+        
+        # Chatbot response
+        pdf.set_font('Arial', '', 12)
+
+        # Split the response text into lines and add them with bold formatting where needed
+        response_lines = response.text.splitlines()
+        for line in response_lines:
+            if '**' in line:  # Markdown-like bold formatting detection
+                # Split the line around '**' to separate bold and normal text
+                parts = line.split('**')
+                for i, part in enumerate(parts):
+                    if i % 2 == 1:  # Bold text
+                        pdf.set_font('Arial', 'B', 12)
+                    else:  # Regular text
+                        pdf.set_font('Arial', '', 12)
+                    pdf.multi_cell(0, 10, part, align='L')
+            else:
+                pdf.set_font('Arial', '', 12)
+                pdf.multi_cell(0, 10, line, align='L')
+
+        # Return PDF as a binary string
+        return pdf.output(dest='S').encode('latin1')  # Return PDF as a binary string
+    # Create and provide the download link for PDF   
     with st.sidebar:
         selected=option_menu(
             menu_title='Main Menu',
@@ -384,13 +466,7 @@ if st.session_state.logged_in:
                         for plant in detected_plant_names:
                             st.write(plant)
 
-                        # Save detection history
-                        # Check if history is already saved
-                        if not st.session_state.history_saved:
-                            detected_plants = ', '.join(detected_plant_names)
-                            save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
-                            st.session_state.history_saved = True  # Mark as saved to avoid saving again
-
+                        
                         # Load plant details from JSON
                         with open("plant_Details.json", "r") as file:
                             plant_details = json.load(file)
@@ -442,84 +518,6 @@ if st.session_state.logged_in:
                         mime="text/plain"
                     )
 
-                    # Function to create a PDF with tabular formatting
-                    def create_detection_pdf():
-                        pdf = FPDF()
-                        pdf.add_page()
-
-                        # Set fonts and colors
-                        pdf.set_font('Arial', 'B', 16)
-                        pdf.set_fill_color(255, 255, 255)  # Background color (white)
-                        
-                        # Table title
-                        title = 'Medical Plant Detection Report'
-                        pdf.cell(0, 10, title, ln=True, align='C')
-                        pdf.set_font('Arial', '', 12)
-
-                        # Move down slightly to avoid overlap with the underline
-                        pdf.ln(10)
-                
-                        # Define a function to add table rows
-                        def add_table_row(label, value):
-                            pdf.cell(90, 10, label, border=1, align='L')
-                            pdf.cell(0, 10, value, border=1, ln=True, align='L')
-                        # Add data rows
-                        add_table_row("Name", user_name)
-                        add_table_row("Age", str(user_age))
-                        add_table_row("Purpose", selected_purpose)
-                        add_table_row("Detected Plants", ', '.join(detected_plant_names))
-                        add_table_row("Timestamp", timestamp)
-
-                        # Add separator line
-                        pdf.ln(10)
-                        pdf.set_font('Arial', 'B', 12)
-                        pdf.cell(0, 10, '-' * 140, ln=True)
-
-                        # Title for the processed image
-                        pdf.ln(10)
-                        pdf.set_font('Arial', 'B', 12)
-                        pdf.cell(0, 10, 'Processed Image', ln=True, align='L')
-                        # Add image
-                        pdf.ln(10)
-                        if processed_image.exists():
-                             # Open the image using PIL
-                             with Image.open(str(processed_image)) as img:
-                                  # Resize the image to 313x180 pixels
-                                  img = img.resize((313, 180), Image.Resampling.LANCZOS)
-
-                                  # Save the resized image temporarily
-                                  resized_image_path = "resized_image.jpg"
-                                  img.save(resized_image_path)
-                                  pdf.image(str(resized_image_path), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
-                             os.remove(resized_image_path)
-                        pdf.ln(100)
-                        # Title for the processed image
-                        pdf.ln(10)
-                        pdf.set_font('Arial', 'B', 12)
-                        pdf.cell(0, 10, 'AI Chatbot Response', ln=True, align='L')
-
-                        
-                        # Chatbot response
-                        pdf.set_font('Arial', '', 12)
-
-                        # Split the response text into lines and add them with bold formatting where needed
-                        response_lines = response.text.splitlines()
-                        for line in response_lines:
-                            if '**' in line:  # Markdown-like bold formatting detection
-                                # Split the line around '**' to separate bold and normal text
-                                parts = line.split('**')
-                                for i, part in enumerate(parts):
-                                    if i % 2 == 1:  # Bold text
-                                        pdf.set_font('Arial', 'B', 12)
-                                    else:  # Regular text
-                                        pdf.set_font('Arial', '', 12)
-                                    pdf.multi_cell(0, 10, part, align='L')
-                            else:
-                                pdf.set_font('Arial', '', 12)
-                                pdf.multi_cell(0, 10, line, align='L')
-
-                        # Return PDF as a binary string
-                        return pdf.output(dest='S').encode('latin1')  # Return PDF as a binary string
                     # Create and provide the download link for PDF
                     pdf_data = create_detection_pdf()
 
@@ -534,6 +532,14 @@ if st.session_state.logged_in:
                     st.write("No processed image available.")
             else:
                 st.error("Please fill in all fields before uploading your image!")
+
+            # Save detection history
+            # Check if history is already saved
+            if not st.session_state.history_saved:
+                detected_plants = ', '.join(detected_plant_names)
+                save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
+                st.session_state.history_saved = True  # Mark as saved to avoid saving again
+
     if selected == 'Detect from webcam':
         # User inputs for name, age, and purpose of detection
         user_name = st.text_input("Enter Your Name:")
@@ -598,12 +604,7 @@ if st.session_state.logged_in:
                         for plant in detected_plant_names:
                             st.write(plant)
 
-                        # Save detection history
-                        # Check if history is already saved
-                        if not st.session_state.history_saved:
-                            detected_plants = ', '.join(detected_plant_names)
-                            save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
-                            st.session_state.history_saved = True  # Mark as saved to avoid saving again
+                        
                             
                         # Load plant details from JSON
                         with open("plant_Details.json", "r") as file:
@@ -656,86 +657,7 @@ if st.session_state.logged_in:
                         mime="text/plain"
                       
                     )
-                    # Function to create a PDF with tabular formatting
-                    def create_detection_pdf():
-                        pdf = FPDF()
-                        pdf.add_page()
-
-                        # Set fonts and colors
-                        pdf.set_font('Arial', 'B', 16)
-                        pdf.set_fill_color(255, 255, 255)  # Background color (white)
-                        
-                        # Table title
-                        title = 'Medical Plant Detection Report'
-                        pdf.cell(0, 10, title, ln=True, align='C')
-                        pdf.set_font('Arial', '', 12)
-
-                        # Move down slightly to avoid overlap with the underline
-                        pdf.ln(10)
-                
-                        # Define a function to add table rows
-                        def add_table_row(label, value):
-                            pdf.cell(90, 10, label, border=1, align='L')
-                            pdf.cell(0, 10, value, border=1, ln=True, align='L')
-                        # Add data rows
-                        add_table_row("Name", user_name)
-                        add_table_row("Age", str(user_age))
-                        add_table_row("Purpose", selected_purpose)
-                        add_table_row("Detected Plants", ', '.join(detected_plant_names))
-                        add_table_row("Timestamp", timestamp)
-
-                        # Add separator line
-                        pdf.ln(10)
-                        pdf.set_font('Arial', 'B', 12)
-                        pdf.cell(0, 10, '-' * 140, ln=True)
-
-                        # Title for the processed image
-                        pdf.ln(10)
-                        pdf.set_font('Arial', 'B', 12)
-                        pdf.cell(0, 10, 'Processed Image', ln=True, align='L')
-                        
-                        # Add image
-                        pdf.ln(10)
-                        if processed_image.exists():
-                             # Open the image using PIL
-                             with Image.open(str(processed_image)) as img:
-                                  # Resize the image to 313x180 pixels
-                                  img = img.resize((313, 180), Image.Resampling.LANCZOS)
-
-                                  # Save the resized image temporarily
-                                  resized_image_path = "resized_image.jpg"
-                                  img.save(resized_image_path)
-                                  pdf.image(str(resized_image_path), x=10, y=pdf.get_y(), w=180)  # Adjust x, y, and w as needed
-                             os.remove(resized_image_path)
-
-                        pdf.ln(100)
-                        # Title for the processed image
-                        pdf.ln(10)
-                        pdf.set_font('Arial', 'B', 12)
-                        pdf.cell(0, 10, 'AI Chatbot Response', ln=True, align='L')
-
-                        
-                        # Chatbot response
-                        pdf.set_font('Arial', '', 12)
-
-                        # Split the response text into lines and add them with bold formatting where needed
-                        response_lines = response.text.splitlines()
-                        for line in response_lines:
-                            if '**' in line:  # Markdown-like bold formatting detection
-                                # Split the line around '**' to separate bold and normal text
-                                parts = line.split('**')
-                                for i, part in enumerate(parts):
-                                    if i % 2 == 1:  # Bold text
-                                        pdf.set_font('Arial', 'B', 12)
-                                    else:  # Regular text
-                                        pdf.set_font('Arial', '', 12)
-                                    pdf.multi_cell(0, 10, part, align='L')
-                            else:
-                                pdf.set_font('Arial', '', 12)
-                                pdf.multi_cell(0, 10, line, align='L')
-
-                        # Return PDF as a binary string
-                        return pdf.output(dest='S').encode('latin1')  # Return PDF as a binary string
+                    
                     # Create and provide the download link for PDF
                     pdf_data = create_detection_pdf()
 
@@ -750,7 +672,12 @@ if st.session_state.logged_in:
                     st.write("No processed image available.")
             else:
                 st.error("Please fill in all fields before Capturing an image!")
-        #st.write("Opening webcam for plant detection...")
+            # Save detection history
+            # Check if history is already saved
+            if not st.session_state.history_saved:
+                detected_plants = ', '.join(detected_plant_names)
+                save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
+                st.session_state.history_saved = True  # Mark as saved to avoid saving again
 
     if selected == 'Ask AI Chatbot':
         st.subheader("Ask the Chatbot about Plants")
@@ -870,4 +797,4 @@ if st.session_state.logged_in:
         st.session_state.logged_in = False
         st.session_state.logout_message = "You have successfully logged out! Please log in again to continue your exploration of medicinal plant detection."
         st.rerun()  # Refresh the page
-            
+        
