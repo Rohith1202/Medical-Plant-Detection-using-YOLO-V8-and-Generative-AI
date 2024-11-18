@@ -9,17 +9,26 @@ from ultralytics import YOLO
 from pathlib import Path
 from datetime import datetime
 import re
-import json
 import google.generativeai as genai
 import cv2
 from PIL import Image
 import numpy as np
 import time
 from fpdf import FPDF
+
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import smtplib
+
 # Paths for user data
 user_data_file = "login_data.csv"
 detection_history_file = "Detection History.csv"
 feedback_file = "feedback.csv"
+model_path = "best.pt" # Path to your YOLO model
+login_bg= "medplant loging bg.jpg"
+interface_bg= "medplant bg.jpg"
 
 # Configure the API key for Gemini
 genai.configure(api_key='AIzaSyDGMkXv8Qqh9Bwf2Xs_M6j1UNTSFJC9wBw')  # Replace with your actual API key
@@ -62,8 +71,6 @@ def validate_login(username, password):
         return bcrypt.checkpw(password.encode('utf-8'), stored_hashed_password.encode('utf-8'))
     return False
 
-
-
 # Change password functionality
 def change_password(username, new_password):
     df = load_user_data()
@@ -73,9 +80,7 @@ def change_password(username, new_password):
         df.to_csv(user_data_file, index=False)
         return True
     return False
-# Initialize session state for detection history
-if 'history_saved' not in st.session_state:
-    st.session_state.history_saved = False
+
 # Load detection history
 def load_detection_history(username):
     if os.path.exists(detection_history_file):
@@ -97,8 +102,6 @@ def save_detection_history(username, name, age, purpose, detected_plants):
         "Purpose": [purpose],
         "Detected Plants": [detected_plants]
     })
-    #history = load_detection_history(username)
-    # Check if the detection history file exists
     if os.path.exists(detection_history_file):
         history = pd.read_csv(detection_history_file)
     else:
@@ -116,8 +119,6 @@ def save_feedback(name, age, gender, rating, feedback):
         5: "5 Stars - Excellent"
     }
     formatted_rating = rating_map[rating]
-    
-    
     feedback_data = pd.DataFrame({
         "Name": [name],
         "Age": [age],
@@ -125,18 +126,13 @@ def save_feedback(name, age, gender, rating, feedback):
         "Rating": [formatted_rating],
         "Feedback": [feedback]
     })
-
     if os.path.exists(feedback_file):
         existing_data = pd.read_csv(feedback_file)
         feedback_data = pd.concat([existing_data, feedback_data], ignore_index=True)
-
     feedback_data.to_csv(feedback_file, index=False)
 
-# Initialize session state for detection history
-#if 'history_saved' not in st.session_state:
-    #st.session_state.history_saved = False
 # Streamlit app title
-st.title("Medical Plant Detection Using Deep Learning🪴")
+st.title("Medicinal Plant Detection Using YOLO V8🪴")
 
 # Initialize session state for login
 if 'logged_in' not in st.session_state:
@@ -148,10 +144,10 @@ if 'username' not in st.session_state:
 if 'logout_message' in st.session_state:
     st.success(st.session_state.logout_message)
     del st.session_state.logout_message  # Clear the message after displaying it
-    
+
 # Display login interface only if not logged in
 if not st.session_state.logged_in:
-  
+
     # Set the background image for the login interface
     def set_login_background(image_file):
         login_bg_img = f'''
@@ -166,19 +162,18 @@ if not st.session_state.logged_in:
         st.markdown(login_bg_img, unsafe_allow_html=True)
 
     # Load the background image for the login interface
-    with open("medplant loging bg.jpg", "rb") as image_file:  # Change this path to your image
+    with open(login_bg, "rb") as image_file:  # Change this path to your image
         encoded_image = base64.b64encode(image_file.read()).decode()
 
     # Set the background for the login interface
     set_login_background(encoded_image)
-
     with st.expander("Authentication", expanded=True):
         menu = option_menu(
                             menu_title=None,
                             options=['Login', 'Register', 'Forgot Password'],
                             icons=['box-arrow-right', 'person-plus', 'key'],
                             orientation='horizontal'
-  
+
                           )
 
         if menu == 'Register':
@@ -252,7 +247,7 @@ if not st.session_state.logged_in:
 
 # Main project interface
 if st.session_state.logged_in:
-  
+
     st.markdown(f"## Welcome, {st.session_state.username}!", unsafe_allow_html=True)
 
     username = st.session_state.username
@@ -270,12 +265,12 @@ if st.session_state.logged_in:
         st.markdown(page_bg_img, unsafe_allow_html=True)
 
     # Load the background image for the interface
-    with open("medplant bg.jpg", "rb") as image_file:  # Change this path to your image
+    with open(interface_bg, "rb") as image_file:  # Change this path to your image
         encoded_image = base64.b64encode(image_file.read()).decode()
 
     # Set the background
     set_background(encoded_image)
-    
+
     # Display the "Login successful!" message if the user has just logged in
     if 'show_success_message' in st.session_state and st.session_state.show_success_message:
         st.success("Login successful!✅")
@@ -293,7 +288,7 @@ if st.session_state.logged_in:
         # Set fonts and colors
         pdf.set_font('Arial', 'B', 16)
         pdf.set_fill_color(255, 255, 255)  # Background color (white)
-        
+
         # Title
         title = 'Response for Your Query'
         pdf.cell(0, 10, title, ln=True, align='C')
@@ -301,11 +296,11 @@ if st.session_state.logged_in:
         # Add the response text
         pdf.ln(10)
         pdf.set_font('Arial', '', 12)
-        
+
         # Replace bold markers with FPDF's bold
         formatted_text = response_text.replace('*', '')
         pdf.multi_cell(0, 10, formatted_text)
-        
+
         return pdf.output(dest='S').encode('latin1')  # Return PDF as a binary string
 
     # Function to create a PDF with tabular formatting
@@ -316,7 +311,7 @@ if st.session_state.logged_in:
         # Set fonts and colors
         pdf.set_font('Arial', 'B', 16)
         pdf.set_fill_color(255, 255, 255)  # Background color (white)
-        
+
         # Table title
         title = 'Medical Plant Detection Report'
         pdf.cell(0, 10, title, ln=True, align='C')
@@ -364,7 +359,6 @@ if st.session_state.logged_in:
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(0, 10, 'AI Chatbot Response', ln=True, align='L')
 
-        
         # Chatbot response
         pdf.set_font('Arial', '', 12)
 
@@ -372,7 +366,7 @@ if st.session_state.logged_in:
         response_lines = response.text.splitlines()
         for line in response_lines:
             if '**' in line:  # Markdown-like bold formatting detection
-                # Split the line around '**' to separate bold and normal text
+                # Split the line around '' to separate bold and normal text
                 parts = line.split('**')
                 for i, part in enumerate(parts):
                     if i % 2 == 1:  # Bold text
@@ -386,7 +380,155 @@ if st.session_state.logged_in:
 
         # Return PDF as a binary string
         return pdf.output(dest='S').encode('latin1')  # Return PDF as a binary string
-    # Create and provide the download link for PDF   
+    # Function to send an email with an attachment
+    def send_email(receiver_email, user_name, user_age, selected_purpose, detected_plant_names, attachment_data):
+        sender_email = "medplantcsp@gmail.com"  # Replace with your email address
+        sender_password = "fhbe ldmw bhcw ygmu"  # Use an app-specific password
+
+
+        subject = "Medicinal Plant Detection Report"
+
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+
+        
+        body_text = f"""
+    <html>
+        <head>
+            <style>
+                body {{
+                    font-family: 'Arial', sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f4f4f9;
+                }}
+                .header {{
+                    background: linear-gradient(90deg, #3b8d99, #6b4fbb);
+                    color: white;
+                    text-align: center;
+                    padding: 20px 0;
+                    border-radius: 10px 10px 0 0;
+                }}
+                .header h1 {{
+                    margin: 0;
+                    font-size: 1.8em;
+                }}
+                .container {{
+                    padding: 20px;
+                    background-color: white;
+                    border-radius: 0 0 10px 10px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }}
+                .section-title {{
+                    color: #3b8d99;
+                    font-weight: bold;
+                    font-size: 1.2em;
+                    margin-top: 20px;
+                }}
+                .team-list, .details-list {{
+                    padding: 0;
+                    list-style-type: none;
+                    margin: 0;
+                }}
+                .team-list li, .details-list li {{
+                    margin-bottom: 10px;
+                    padding: 5px 0;
+                }}
+                .team-list li strong, .details-list li strong {{
+                    color: #6b4fbb;
+                }}
+                .footer {{
+                    margin-top: 30px;
+                    font-size: 0.9em;
+                    color: #666;
+                    text-align: center;
+                }}
+                .button {{
+                    display: inline-block;
+                    background: #3b8d99;
+                    color: white;
+                    padding: 10px 15px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin-top: 10px;
+                }}
+                .button:hover {{
+                    background: #6b4fbb;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🌱 Medicinal Plant Detection Report</h1>
+                <p>Leveraging AI for Better Understanding of Medicinal Plants</p>
+            </div>
+            <div class="container">
+                <p>Dear <strong>{user_name}</strong>,</p>
+                <p>Thank you for using our Medicinal Plant Detection service powered by Deep Learning technology. We are pleased to provide you with the results of your recent inquiry.</p>
+
+                <div class="section-title">🔍 Detection Details:</div>
+                <ul class="details-list">
+                    <li><strong>Name:</strong> {user_name}</li>
+                    <li><strong>Age:</strong> {user_age}</li>
+                    <li><strong>Purpose of Detection:</strong> {selected_purpose}</li>
+                    <li><strong>Detected Plants:</strong> {', '.join(detected_plant_names)}</li>
+                </ul>
+
+                <div class="section-title">📚 About Our Project:</div>
+                <p>Our mission is to leverage state-of-the-art deep learning technology to identify medicinal plants accurately, empowering communities with knowledge about natural remedies and promoting sustainable practices.</p>
+
+                <div class="section-title">👥 Meet Our Team:</div>
+                <ul class="team-list">
+                    <li><strong>BOPPANA ROHITH</strong>  (99220041454), Team Lead and Developer - Specializes in Deep Learning and Artificial Intelligence algorithms.</li>
+                    <li><strong>ANIMMA SRINIVASINE P</strong>  (99220041437), Researcher - Provides domain expertise on medicinal plants and their identification.</li>
+                    <li><strong>BACHULA YASWANTH BABU</strong> (99220041445), Web Developer - Responsible for designing and implementing the project's web application.</li>
+                    <li><strong>ANISETTY.SAI PRAJWIN</strong> (99220041438), Data Scientist - Analyzes plant data and develops insights to improve the identification system.</li>
+                </ul>
+
+                <div class="section-title">🎓 Project Mentors:</div>
+                <ul class="team-list">
+                    <li><strong>Dr. J. JANE RUBEL ANGELINA</strong> – Project Mentor, Kalasalingam Academy of Reserch and Education, CSE</li>
+                    <li><strong>Dr. T. MARIMUTHU</strong> – Project Reviewer, Kalasalingam Academy of Reserch and Education, CSE</li>
+                </ul>
+
+                <p>We hope this report serves your needs effectively. If you have any questions, feel free to contact us.</p>
+
+                <a href="mailto:medplantcsp@gmail.com" class="button">📧 Contact Us</a>
+
+                <div class="footer">
+                    <p>&copy; 2024 Medicinal Plant Detection Team | CSP013</p>
+                </div>
+            </div>
+        </body>
+    </html>
+    """
+
+
+        msg.attach(MIMEText(body_text, 'html'))
+
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(attachment_data)
+        
+        encoders.encode_base64(part)
+        
+        part.add_header('Content-Disposition', f'attachment; filename="report.pdf"')
+        
+        msg.attach(part)
+
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
+            server.close()
+            st.success("Email has been sent to your mail successfully, Please check your mail for Plant Detection Report!")
+            
+        except Exception as e:
+            st.error(f"Failed to send email: {e}")
+        # Create and provide the download link for PDF
     with st.sidebar:
         selected=option_menu(
             menu_title='Main Menu',
@@ -399,6 +541,7 @@ if st.session_state.logged_in:
         # User inputs for name, age, and purpose of detection
         user_name = st.text_input("Enter Your Name:")
         user_age = st.number_input("Enter Your Age:", min_value=1, max_value=120, step=1, format="%d")
+        receiver_email = st.text_input("Enter recipient's email:")
 
         # Dropdown menu for detection purpose
         purpose_options = [
@@ -414,18 +557,15 @@ if st.session_state.logged_in:
         ]
         selected_purpose = st.selectbox("Choose the Purpose of Detection:", purpose_options)
 
-        
         # File uploader
         uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg", "gif"])
 
         if uploaded_file is not None:
-            st.session_state.history_saved = False
-
             # Ensure upload folder exists
             if not os.path.exists('uploaded_images'):
                 os.makedirs('uploaded_images')
             if user_name and user_age and selected_purpose:
-                
+
                 # Save the uploaded image
                 filename = Path(uploaded_file.name).name
                 image_path = os.path.join('uploaded_images', filename)
@@ -438,7 +578,6 @@ if st.session_state.logged_in:
 
                 # Perform detection
                 st.write("Processing the image...")
-                model_path = "best.pt" # Path to your YOLO model
                 model = YOLO(model_path)
                 results = model.predict(image_path, save=True, save_txt=True)
 
@@ -462,167 +601,13 @@ if st.session_state.logged_in:
 
                     # Display detected plant names
                     if detected_plant_names:
-                        st.write("Detected Plants:")
+                        st.markdown("### Detected Plants:")
                         for plant in detected_plant_names:
-                            st.write(plant)
-
-                        
-                        # Load plant details from JSON
-                        with open("plant_Details.json", "r") as file:
-                            plant_details = json.load(file)
-
-                        for plant in detected_plant_names:
-                            plant_info = next((p for p in plant_details["plants"] if p["Common Name"] == plant), None)
-                            if plant_info:
-                                st.write("*Scientific Name:*", plant_info["Scientific Name"])
-                                st.write("*Uses:*", plant_info["Uses"]["Medicinal Uses"])
-                                st.write("*Location:*", plant_info["Location"]["Native Region"])
-                                st.write("*Dosage:*", plant_info["Dosage"]["Recommended Dosage"])
-                                st.write("*Active Compounds:*", plant_info["Active Compounds"])
-                                st.write("---")
+                            st.markdown(f'## {plant}')
 
                         # Automatically query the chatbot for information about the detected plants
                         for plant in detected_plant_names:
-                            query = f"Tell me about {plant}."
-                            response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
-                            st.write(f"*Chatbot Response for {plant}:* {response.text}")
-
-                    else:
-                        st.write("No plants detected.")
-
-                    # Provide a download link for the processed image
-                    with open(processed_image, "rb") as file:
-                        st.download_button(label="Download Processed Image as .jpg", data=file, file_name=f"processed_{filename}", mime="image/png")
-
-                    # Locate the TXT file with detection data
-                    txt_file = latest_run / f"{filename.split('.')[0]}.txt"
-                    timestamp = datetime.now().strftime("%d-%B-%Y  %H:%M:%S")
-
-                    # Read the existing detection data
-                    detection_data = ""
-
-                    if txt_file.exists():
-                        with open(txt_file, "r") as file:
-                            detection_data = file.read()
-
-                    # Append user information, purpose, detected plant names, and timestamp to the detection data
-                    detection_data += f"\nName: {user_name}\nAge: {user_age}\nPurpose: {selected_purpose}\nDetected Plants: {', '.join(detected_plant_names)}\nTimestamp: {timestamp}\n"
-                    detection_data += f"\n------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
-                    detection_data += f"Chatbot Response for {plant}: {response.text}\n\n"
-
-                    # Provide a download link for the updated detection data
-                    st.download_button(
-                        label="Download Detection Data as .txt",
-                        data=detection_data,
-                        file_name=f"detection_{filename.split('.')[0]}.txt",
-                        mime="text/plain"
-                    )
-
-                    # Create and provide the download link for PDF
-                    pdf_data = create_detection_pdf()
-
-                    st.download_button(
-                        label="Download Detection Data as .pdf",
-                        data=pdf_data,
-                        file_name=f"detection_{filename.split('.')[0]}.pdf",
-                        mime="application/pdf"
-                                        )
-
-                else:
-                    st.write("No processed image available.")
-            else:
-                st.error("Please fill in all fields before uploading your image!")
-
-            # Save detection history
-            # Check if history is already saved
-            if not st.session_state.history_saved:
-                detected_plants = ', '.join(detected_plant_names)
-                save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
-                st.session_state.history_saved = True  # Mark as saved to avoid saving again
-
-    if selected == 'Detect from webcam':
-        # User inputs for name, age, and purpose of detection
-        user_name = st.text_input("Enter Your Name:")
-        user_age = st.number_input("Enter Your Age:", min_value=1, max_value=120, step=1, format="%d")
-        # Dropdown menu for detection purpose
-        purpose_options = [
-            "Identify Medicinal Properties",
-            "Check Plant Authenticity",
-            "Identify Edible Plants",
-            "Identify Toxic Plants",
-            "Determine Plant Dosage",
-            "Educational Research",
-            "Personal Use",
-            "Commercial Use",
-            "Others"
-        ]
-        selected_purpose = st.selectbox("Choose The Purpose of Detection:", purpose_options)
-
-        camera = st.camera_input("Capture an Image from Your Webcam")
-
-        if camera is not None:
-            st.session_state.history_saved = False
-
-            # Ensure upload folder exists
-            if not os.path.exists('uploaded_images'):
-                os.makedirs('uploaded_images')
-            if user_name and user_age:
-                # Save the uploaded image
-                filename = Path(camera.name).name
-                image_path = os.path.join('uploaded_images', filename)
-
-                with open(image_path, "wb") as f:
-                    f.write(camera.getbuffer())
-
-                # Perform detection
-                st.write("Processing the image...")
-                model_path = "best.pt"  # Path to your YOLO model
-                model = YOLO(model_path)
-                results = model.predict(image_path, save=True, save_txt=True)
-
-                # Locate the processed image saved by YOLO
-                runs_dir = Path("runs/detect")
-                latest_run = max(runs_dir.iterdir(), key=os.path.getmtime)
-                processed_image = latest_run / filename
-
-                detected_plant_names = []
-
-                if results:
-                    for result in results:
-                        for box in result.boxes:
-                            plant_name = result.names[int(box.cls)]
-                            if plant_name not in detected_plant_names:  # Check if the plant name is already in the list
-                                detected_plant_names.append(plant_name)
-                                break
-
-                if processed_image.exists():
-                    st.image(str(processed_image), caption='Processed Image', use_column_width=True)
-
-                    # Display detected plant names
-                    if detected_plant_names:
-                        st.write("Detected Plants:")
-                        for plant in detected_plant_names:
-                            st.write(plant)
-
-                        
-                            
-                        # Load plant details from JSON
-                        with open("plant_Details.json", "r") as file:
-                            plant_details = json.load(file)
-
-                        for plant in detected_plant_names:
-                            plant_info = next((p for p in plant_details["plants"] if p["Common Name"] == plant), None)
-                            if plant_info:
-                                st.write("Scientific Name:", plant_info["Scientific Name"])
-                                st.write("Uses:", plant_info["Uses"]["Medicinal Uses"])
-                                st.write("Location:", plant_info["Location"]["Native Region"])
-                                st.write("Dosage:", plant_info["Dosage"]["Recommended Dosage"])
-                                st.write("Active Compounds:", plant_info["Active Compounds"])
-                                st.write("---")
-
-                        # Automatically query the chatbot for information about the detected plants
-                        for plant in detected_plant_names:
-                            query = f"Tell me about {plant}."
+                            query = f"Tell me about {plant} and my purpose of detection is {selected_purpose}."
                             response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
                             st.write(f"Chatbot Response for {plant}: {response.text}")
 
@@ -655,9 +640,133 @@ if st.session_state.logged_in:
                         data=detection_data,
                         file_name=f"detection_{filename.split('.')[0]}.txt",
                         mime="text/plain"
-                      
                     )
-                    
+
+                    # Create and provide the download link for PDF
+                    pdf_data = create_detection_pdf()
+                  
+                    st.download_button(
+                        label="Download Detection Data as .pdf",
+                        data=pdf_data,
+                        file_name=f"detection_{filename.split('.')[0]}.pdf",
+                        mime="application/pdf"
+                                        )
+                    if st.button("Send Report to Mail ✉"):
+                        send_email(receiver_email,
+                        user_name,
+                        user_age,
+                        selected_purpose,
+                        detected_plant_names,
+                    attachment_data= pdf_data)
+
+                else:
+                    st.write("No processed image available.")
+            else:
+                st.error("Please fill in all fields before uploading your image!")
+
+            # Save detection history
+            detected_plants = ', '.join(detected_plant_names)
+            save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
+
+    if selected == 'Detect from webcam':
+        # User inputs for name, age, and purpose of detection
+        user_name = st.text_input("Enter Your Name:")
+        user_age = st.number_input("Enter Your Age:", min_value=1, max_value=120, step=1, format="%d")
+        # Dropdown menu for detection purpose
+        purpose_options = [
+            "Identify Medicinal Properties",
+            "Check Plant Authenticity",
+            "Identify Edible Plants",
+            "Identify Toxic Plants",
+            "Determine Plant Dosage",
+            "Educational Research",
+            "Personal Use",
+            "Commercial Use",
+            "Others"
+        ]
+        selected_purpose = st.selectbox("Choose The Purpose of Detection:", purpose_options)
+
+        camera = st.camera_input("Capture an Image from Your Webcam")
+
+        if camera is not None:
+
+            # Ensure upload folder exists
+            if not os.path.exists('uploaded_images'):
+                os.makedirs('uploaded_images')
+            if user_name and user_age:
+                # Save the uploaded image
+                filename = Path(camera.name).name
+                image_path = os.path.join('uploaded_images', filename)
+
+                with open(image_path, "wb") as f:
+                    f.write(camera.getbuffer())
+
+                # Perform detection
+                st.write("Processing the image...")
+                model = YOLO(model_path)
+                results = model.predict(image_path, save=True, save_txt=True)
+
+                # Locate the processed image saved by YOLO
+                runs_dir = Path("runs/detect")
+                latest_run = max(runs_dir.iterdir(), key=os.path.getmtime)
+                processed_image = latest_run / filename
+
+                detected_plant_names = []
+
+                if results:
+                    for result in results:
+                        for box in result.boxes:
+                            plant_name = result.names[int(box.cls)]
+                            if plant_name not in detected_plant_names:  # Check if the plant name is already in the list
+                                detected_plant_names.append(plant_name)
+                                break
+
+                if processed_image.exists():
+                    st.image(str(processed_image), caption='Processed Image', use_column_width=True)
+
+                    # Display detected plant names
+                    if detected_plant_names:
+                        st.markdown("### Detected Plants:")
+                        for plant in detected_plant_names:
+                            st.markdown(f'## {plant}')
+
+                        # Automatically query the chatbot for information about the detected plants
+                        for plant in detected_plant_names:
+                            query = f"Tell me about {plant} and my purpose of detection is {selected_purpose}."
+                            response = genai.GenerativeModel('gemini-1.5-flash').generate_content(query)
+                            st.write(f"Chatbot Response for {plant}: {response.text}")
+                    else:
+                        st.write("No plants detected.")
+
+                    # Provide a download link for the processed image
+                    with open(processed_image, "rb") as file:
+                        st.download_button(label="Download Processed Image as .jpg", data=file, file_name=f"processed_{filename}", mime="image/png")
+
+                    # Locate the TXT file with detection data
+                    txt_file = latest_run / f"{filename.split('.')[0]}.txt"
+                    timestamp = datetime.now().strftime("%d-%B-%Y  %H:%M:%S")
+
+                    # Read the existing detection data
+                    detection_data = ""
+
+                    if txt_file.exists():
+                        with open(txt_file, "r") as file:
+                            detection_data = file.read()
+
+                    # Append user information, purpose, detected plant names, and timestamp to the detection data
+                    detection_data += f"\nName: {user_name}\nAge: {user_age}\nPurpose: {selected_purpose}\nDetected Plants: {', '.join(detected_plant_names)}\nTimestamp: {timestamp}\n"
+                    detection_data += f"\n------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n"
+                    detection_data += f"Chatbot Response for {plant}: {response.text}\n\n"
+
+                    # Provide a download link for the updated detection data
+                    st.download_button(
+                        label="Download Detection Data as .txt",
+                        data=detection_data,
+                        file_name=f"detection_{filename.split('.')[0]}.txt",
+                        mime="text/plain"
+
+                    )
+
                     # Create and provide the download link for PDF
                     pdf_data = create_detection_pdf()
 
@@ -673,17 +782,15 @@ if st.session_state.logged_in:
             else:
                 st.error("Please fill in all fields before Capturing an image!")
             # Save detection history
-            # Check if history is already saved
-            if not st.session_state.history_saved:
-                detected_plants = ', '.join(detected_plant_names)
-                save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
-                st.session_state.history_saved = True  # Mark as saved to avoid saving again
+            detected_plants = ', '.join(detected_plant_names)
+            save_detection_history(username, user_name, user_age, selected_purpose, detected_plants)
+
 
     if selected == 'Ask AI Chatbot':
         st.subheader("Ask the Chatbot about Plants")
         user_query = st.text_input("What do you want to know about plants?",
-                                 placeholder="Ask your Medical Plants related question here...")
-        
+                                 placeholder="Ask your Medicinal Plants related question here...")
+
         if st.button("Submit"):
             if user_query:
                 # Generate a response from the Gemini API
@@ -698,11 +805,11 @@ if st.session_state.logged_in:
                     mime="application/pdf"
                                   )
             else:
-                st.warning("⚠️ Please ask your question.")  # Show a warning if input is empty
+                st.warning("⚠ Please ask your question.")  # Show a warning if input is empty
     if selected == 'Detection History':
             username = st.session_state.username  # Get the logged-in user's username
             st.subheader(f"Detection History for {username}")
-            
+
             user_history = load_detection_history(username)
             if user_history.empty:
                 st.info("No detection history found.")
@@ -719,7 +826,6 @@ if st.session_state.logged_in:
             gender_options = ["Male", "Female"]
             selected_gender = st.selectbox("Select Your Gender:", gender_options)
 
-            #feedback_rating = st.radio("Rate your experience (1-5 stars):", range(1, 6))
             # Rating selection
             feedback_rating = st.radio(
                 "Rate Your Experience (1-5 stars):",
@@ -737,7 +843,7 @@ if st.session_state.logged_in:
 
             if st.button("Submit Feedback"):
                 if user_name and user_age and selected_gender:
-                    
+
                     save_feedback(user_name, user_age, selected_gender, feedback_rating, feedback_text)
                     st.success("Thank you for your feedback!")
                 else:
@@ -751,6 +857,7 @@ if st.session_state.logged_in:
             unsafe_allow_html=True
         )
         st.markdown("## <i class='fas fa-info-circle'></i> About Us", unsafe_allow_html=True)
+        st.markdown("## The Community Servive Project -- CSP013")
         st.markdown(" #### We are a dedicated team committed to providing the best service.")
 
         # Mission Section
@@ -781,12 +888,11 @@ if st.session_state.logged_in:
 
         # Project Mentor
         st.markdown("<h3><i class='fas fa-chalkboard-teacher'></i> Project Mentor:</h3>", unsafe_allow_html=True)
-        st.markdown("##### **Dr. J. JANE RUBEL ANGELINA, Kalasalingam Academy of Research and Education, CSE**")
+        st.markdown("##### *Dr. J. JANE RUBEL ANGELINA, Kalasalingam Academy of Research and Education, CSE*")
 
         # Project Reviwer
         st.markdown("<h3><i class='fas fa-pen'></i> Project Reviwer:</h3>", unsafe_allow_html=True)
-        st.markdown("##### **Dr. S. SHARGUNAM, Kalasalingam Academy of Research and Education, CSE**")
-
+        st.markdown("##### *Dr. T. MARIMUTHU, Kalasalingam Academy of Research and Education, CSE*")
 
         # Adding some separation
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -797,4 +903,3 @@ if st.session_state.logged_in:
         st.session_state.logged_in = False
         st.session_state.logout_message = "You have successfully logged out! Please log in again to continue your exploration of medicinal plant detection."
         st.rerun()  # Refresh the page
-        
