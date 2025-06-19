@@ -201,8 +201,7 @@ I'm deeply interested in building real-world tech solutions that combine data, i
 
 ### 👇 My Core Interests
 - 🤖 Artificial Intelligence & Machine Learning  
-- 🔍 Data Science & Analytics  
-- 🌐 Full-Stack Web Development  
+- 🔍 Data Science & Analytics   
 - 📊 BI Dashboards & Predictive Modeling  
 - 💡 Problem-Solving with Scalable Technologies
 
