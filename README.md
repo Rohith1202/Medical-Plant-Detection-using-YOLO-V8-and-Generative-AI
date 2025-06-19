@@ -83,7 +83,7 @@ This tool is designed to support **botanical research**, **herbal medicine ident
 ## 📥 Sample Output File (TXT)
 
 ```
-Name: Anusha
+Name: Rohith
 Age: 22
 Timestamp: 2025-05-29 17:05:23
 Detected Plant: Ocimum tenuiflorum (Tulsi)
@@ -193,7 +193,7 @@ streamlit run Medical_Plant_Detection.py
 ---
 ---
 
-## 👩‍💻 About Me
+## 👨‍💻 About Me
 
 Hi, I’m **Rohith Boppana** — a passionate and driven **final-year B.Tech student** in **Computer Science and Engineering** with a specialization in **Artificial Intelligence & Machine Learning**.
 
